@@ -1,0 +1,5 @@
+node_modules
+
+handson/venv/
+
+.envrc
