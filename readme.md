@@ -1,3 +1,5 @@
+https://catalog.workshops.aws/ecs-web-application-handson/ja-JP
+
 ## Build docker image
 
 ```
