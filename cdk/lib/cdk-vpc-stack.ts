@@ -2,6 +2,7 @@ import { Stack, StackProps } from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
 import { Construct } from "constructs";
 
@@ -71,5 +72,9 @@ export class CdkVpcStack extends Stack {
     );
 
     cluster.addAsgCapacityProvider(capacityProvider);
+
+    const ecrRepository = new ecr.Repository(this, "EcsHandsOnRepository", {
+      repositoryName: "EcsHandsOnRepository",
+    });
   }
 }
