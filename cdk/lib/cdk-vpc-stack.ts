@@ -74,7 +74,7 @@ export class CdkVpcStack extends Stack {
     cluster.addAsgCapacityProvider(capacityProvider);
 
     const ecrRepository = new ecr.Repository(this, "EcsHandsOnRepository", {
-      repositoryName: "EcsHandsOnRepository",
+      repositoryName: "ecs_handson_repository",
     });
   }
 }
