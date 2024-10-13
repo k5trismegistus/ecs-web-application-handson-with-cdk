@@ -1,4 +1,4 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { Stack, StackProps, RemovalPolicy } from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
@@ -75,6 +75,14 @@ export class CdkVpcStack extends Stack {
 
     const ecrRepository = new ecr.Repository(this, "EcsHandsOnRepository", {
       repositoryName: "ecs_handson_repository",
+
+      // To remove the repository when the stack is deleted, you must explicitly set the removal policy to DESTROY
+      removalPolicy: RemovalPolicy.DESTROY,
+      // To remove the repository when the stack is deleted even if it has images,
+      // you must explicitly set the removal policy to DESTROY and set the emptyOnDelete property to true
+      emptyOnDelete: true,
+    });
+
     });
   }
 }
