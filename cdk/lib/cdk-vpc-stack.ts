@@ -52,12 +52,19 @@ export class CdkVpcStack extends Stack {
 
     const autoScalingGroup = new autoscaling.AutoScalingGroup(this, "EcsASG", {
       vpc,
-      instanceType: new ec2.InstanceType("t3.medium"), // 必要に応じてインスタンスタイプを選択
-      machineImage: ecs.EcsOptimizedImage.amazonLinux2(), // ECS最適化AMI
+
+      // If you are using an ARM-based computer (e.g. Apple Silicon based Mac),
+      // it is recommended to use the arm based instance type like t4g.
+      // And you need to specify the machine image as ecs.AmiHardwareType.ARM
+      instanceType: new ec2.InstanceType("t4g.small"),
+      machineImage: ecs.EcsOptimizedImage.amazonLinux2023(
+        ecs.AmiHardwareType.ARM
+      ),
       minCapacity: 1,
       maxCapacity: 1,
+      // Setting subnetType public will automatically select all public subnets for this ASG
       vpcSubnets: {
-        subnetType: ec2.SubnetType.PUBLIC, // AutoScalingGroupを配置するサブネットのタイプ
+        subnetType: ec2.SubnetType.PUBLIC,
       },
       securityGroup: ecsSecurityGroup,
       role: clusterRole,
