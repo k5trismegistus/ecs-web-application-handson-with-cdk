@@ -25,6 +25,8 @@ export class CdkVpcStack extends Stack {
           subnetType: ec2.SubnetType.PUBLIC,
         },
       ],
+      // To avoid the subnets being created in the same AZ, specify the maxAzs property
+      maxAzs: 2,
     });
 
     const ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSecurityGroup", {
