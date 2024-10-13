@@ -16,12 +16,12 @@ export class CdkVpcStack extends Stack {
       subnetConfiguration: [
         {
           cidrMask: 24,
-          name: "Public",
+          name: "Public1",
           subnetType: ec2.SubnetType.PUBLIC,
         },
         {
           cidrMask: 24,
-          name: "Public",
+          name: "Public2",
           subnetType: ec2.SubnetType.PUBLIC,
         },
       ],
