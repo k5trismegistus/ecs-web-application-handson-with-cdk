@@ -4,6 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
+import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { Construct } from "constructs";
 
 export class CdkVpcStack extends Stack {
@@ -34,7 +35,6 @@ export class CdkVpcStack extends Stack {
       allowAllOutbound: true,
     });
 
-    // 必要なポートを開放（例としてHTTPポート80を開放）
     ecsSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
@@ -92,6 +92,60 @@ export class CdkVpcStack extends Stack {
       emptyOnDelete: true,
     });
 
+    const taskDefinition = new ecs.TaskDefinition(this, "EcsHandsOnTask", {
+      compatibility: ecs.Compatibility.EC2_AND_FARGATE,
+      cpu: "256",
+      memoryMiB: "512",
+    });
+
+    const container = taskDefinition.addContainer("EcsHandsOnContainer", {
+      image: ecs.ContainerImage.fromEcrRepository(ecrRepository),
+      memoryLimitMiB: 512,
+      cpu: 256,
+      portMappings: [
+        {
+          containerPort: 5000,
+        },
+      ],
+    });
+
+    const albSecurityGroup = new ec2.SecurityGroup(this, "AlbSecurityGroup", {
+      vpc,
+      allowAllOutbound: true,
+    });
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      "Allow HTTP traffic"
+    );
+
+    const ecsService = new ecs.Ec2Service(this, "MyEc2Service", {
+      cluster,
+      taskDefinition,
+      desiredCount: 2,
+    });
+
+    const alb = new elb.ApplicationLoadBalancer(this, "MyALB", {
+      vpc: vpc,
+      internetFacing: true,
+      securityGroup: albSecurityGroup,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC,
+        onePerAz: true,
+      },
+    });
+
+    const targetGroup = new elb.ApplicationTargetGroup(this, "MyTargetGroup", {
+      vpc,
+      port: 5000,
+      protocol: elb.ApplicationProtocol.HTTP,
+      targets: [ecsService],
+    });
+
+    alb.addListener("Listener", {
+      port: 80,
+      defaultAction: elb.ListenerAction.forward([targetGroup]),
     });
   }
 }
