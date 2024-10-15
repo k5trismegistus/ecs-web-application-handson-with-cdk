@@ -16,8 +16,11 @@ $ npx cdk bootstrap
 ## Deploy
 
 ```
+# at cdk/
 $ npx cdk synth
 $ npx cdk deploy
+# at handson/
+$ ./deploy.sh
 ```
 
 ## Destroy
