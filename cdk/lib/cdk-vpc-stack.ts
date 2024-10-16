@@ -6,6 +6,7 @@ import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
 import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { Construct } from "constructs";
+import * as cdk from "aws-cdk-lib";
 
 export class CdkVpcStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -30,57 +31,11 @@ export class CdkVpcStack extends Stack {
       maxAzs: 2,
     });
 
-    const ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSecurityGroup", {
-      vpc,
-      allowAllOutbound: true,
-    });
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic"
-    );
-
-    const clusterRole = new iam.Role(this, "MyRole", {
-      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
-      description: "My EC2 role",
-    });
-
     const cluster = new ecs.Cluster(this, "EcsHandsOnCluster", {
       vpc: vpc,
       clusterName: "EcsHandsOnCluster",
       enableFargateCapacityProviders: true,
     });
-
-    const autoScalingGroup = new autoscaling.AutoScalingGroup(this, "EcsASG", {
-      vpc,
-
-      // If you are using an ARM-based computer (e.g. Apple Silicon based Mac),
-      // it is recommended to use the arm based instance type like t4g.
-      // And you need to specify the machine image as ecs.AmiHardwareType.ARM
-      instanceType: new ec2.InstanceType("t4g.small"),
-      machineImage: ecs.EcsOptimizedImage.amazonLinux2023(
-        ecs.AmiHardwareType.ARM
-      ),
-      minCapacity: 1,
-      maxCapacity: 1,
-      // Setting subnetType public will automatically select all public subnets for this ASG
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PUBLIC,
-      },
-      securityGroup: ecsSecurityGroup,
-      role: clusterRole,
-    });
-
-    const capacityProvider = new ecs.AsgCapacityProvider(
-      this,
-      "EcsAsgCapacityProvider",
-      {
-        autoScalingGroup,
-      }
-    );
-
-    cluster.addAsgCapacityProvider(capacityProvider);
 
     const ecrRepository = new ecr.Repository(this, "EcsHandsOnRepository", {
       repositoryName: "ecs_handson_repository",
@@ -96,6 +51,9 @@ export class CdkVpcStack extends Stack {
       compatibility: ecs.Compatibility.EC2_AND_FARGATE,
       cpu: "256",
       memoryMiB: "512",
+      runtimePlatform: {
+        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+      },
     });
 
     const container = taskDefinition.addContainer("EcsHandsOnContainer", {
@@ -120,10 +78,18 @@ export class CdkVpcStack extends Stack {
       "Allow HTTP traffic"
     );
 
-    const ecsService = new ecs.Ec2Service(this, "MyEc2Service", {
+    const ecsService = new ecs.FargateService(this, "EcsHandsOnService", {
       cluster,
       taskDefinition,
-      desiredCount: 2,
+      desiredCount: 1,
+      assignPublicIp: true,
+
+      capacityProviderStrategies: [
+        {
+          capacityProvider: "FARGATE",
+          weight: 1,
+        },
+      ],
     });
 
     const alb = new elb.ApplicationLoadBalancer(this, "MyALB", {
@@ -146,6 +112,17 @@ export class CdkVpcStack extends Stack {
     alb.addListener("Listener", {
       port: 80,
       defaultAction: elb.ListenerAction.forward([targetGroup]),
+    });
+
+    const autoScaling = ecsService.autoScaleTaskCount({
+      minCapacity: 1,
+      maxCapacity: 10,
+    });
+    autoScaling.scaleOnRequestCount("RequestScaling", {
+      requestsPerTarget: 1000,
+      targetGroup,
+      scaleInCooldown: cdk.Duration.seconds(300),
+      scaleOutCooldown: cdk.Duration.seconds(10),
     });
   }
 }
