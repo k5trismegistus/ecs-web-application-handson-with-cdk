@@ -1,50 +1,28 @@
-import { Stack, StackProps, RemovalPolicy } from "aws-cdk-lib";
-import * as iam from "aws-cdk-lib/aws-iam";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as ecr from "aws-cdk-lib/aws-ecr";
-import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
-import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
+
 import * as cdk from "aws-cdk-lib";
 
-export class CdkVpcStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ecr from "aws-cdk-lib/aws-ecr";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
+
+interface ApplicationStackProps extends StackProps {
+  vpc: ec2.Vpc;
+  ecrRepository: ecr.Repository;
+}
+
+export class ApplicationStack extends Stack {
+  constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props);
 
-    const vpc = new ec2.Vpc(this, "EcsHandsOnVpc", {
-      vpcName: "EcsHandsOnVpc",
-      ipAddresses: ec2.IpAddresses.cidr("10.0.0.0/16"),
-      subnetConfiguration: [
-        {
-          cidrMask: 24,
-          name: "Public1",
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-        {
-          cidrMask: 24,
-          name: "Public2",
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-      ],
-      // To avoid the subnets being created in the same AZ, specify the maxAzs property
-      maxAzs: 2,
-    });
+    const { vpc, ecrRepository } = props;
 
     const cluster = new ecs.Cluster(this, "EcsHandsOnCluster", {
       vpc: vpc,
       clusterName: "EcsHandsOnCluster",
       enableFargateCapacityProviders: true,
-    });
-
-    const ecrRepository = new ecr.Repository(this, "EcsHandsOnRepository", {
-      repositoryName: "ecs_handson_repository",
-
-      // To remove the repository when the stack is deleted, you must explicitly set the removal policy to DESTROY
-      removalPolicy: RemovalPolicy.DESTROY,
-      // To remove the repository when the stack is deleted even if it has images,
-      // you must explicitly set the removal policy to DESTROY and set the emptyOnDelete property to true
-      emptyOnDelete: true,
     });
 
     const taskDefinition = new ecs.TaskDefinition(this, "EcsHandsOnTask", {
